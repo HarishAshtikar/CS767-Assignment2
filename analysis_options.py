@@ -64,7 +64,7 @@ def suggest_analysis_options(csv_path: Path, output_dir: Path) -> list[dict]:
     if _cache_entry_is_valid(cached, fingerprint):
         return _normalize_options(cached["options"])
 
-    options = _generate_options_with_llm(csv_path)
+    options = _generate_options(csv_path)
     cache.setdefault("datasets", {})[csv_path.name] = _cache_entry(fingerprint, options)
     _write_cache(cache_path, cache)
     return options
@@ -90,7 +90,7 @@ def ensure_analysis_cache(input_dir: Path, output_dir: Path) -> dict:
         if _cache_entry_is_valid(cached, fingerprint):
             continue
 
-        options = _generate_options_with_llm(csv_path)
+        options = _generate_options(csv_path)
         cache["datasets"][csv_path.name] = _cache_entry(fingerprint, options)
         changed = True
 
@@ -149,6 +149,88 @@ Rules:
 
     response = generate_json(build_client(), prompt, "Generate practical CSV analysis options.")
     return _normalize_options(response.get("options", []))
+
+
+def _generate_options(csv_path: Path) -> list[dict]:
+    """Generate suggestions with Gemini, falling back to local heuristics."""
+    try:
+        return _generate_options_with_llm(csv_path)
+    except Exception:
+        return _generate_fallback_options(csv_path)
+
+
+def _generate_fallback_options(csv_path: Path) -> list[dict]:
+    """Create useful suggestions locally when Gemini quota is unavailable."""
+    df = pd.read_csv(csv_path, nrows=10)
+    columns = [str(column) for column in df.columns]
+    if not columns:
+        return [
+            {
+                "title": "Summarize Dataset",
+                "goal": "Summarize the dataset structure, row count, columns, missing values, and any notable data quality issues.",
+            }
+        ]
+
+    numeric_columns = [
+        column
+        for column in columns
+        if pd.api.types.is_numeric_dtype(df[column])
+    ]
+    categorical_columns = [column for column in columns if column not in numeric_columns]
+
+    options = [
+        {
+            "title": "Dataset Overview",
+            "goal": (
+                "Summarize the dataset structure, row count, column types, missing values, "
+                f"and notable patterns across {', '.join(columns[:8])}."
+            ),
+        }
+    ]
+
+    if numeric_columns:
+        options.append(
+            {
+                "title": "Numeric Trends",
+                "goal": (
+                    "Analyze distributions, outliers, correlations, and summary statistics "
+                    f"for numeric columns including {', '.join(numeric_columns[:6])}."
+                ),
+            }
+        )
+
+    if categorical_columns:
+        options.append(
+            {
+                "title": "Category Breakdown",
+                "goal": (
+                    "Compare frequencies, dominant groups, and relationships for categorical columns "
+                    f"including {', '.join(categorical_columns[:6])}."
+                ),
+            }
+        )
+
+    if numeric_columns and categorical_columns:
+        options.append(
+            {
+                "title": "Group Comparisons",
+                "goal": (
+                    f"Compare {', '.join(numeric_columns[:3])} across groups such as "
+                    f"{', '.join(categorical_columns[:3])}, highlighting meaningful differences."
+                ),
+            }
+        )
+
+    options.append(
+        {
+            "title": "Chart Key Patterns",
+            "goal": (
+                "Generate charts that reveal the most important distributions, comparisons, "
+                "relationships, and possible anomalies in the dataset."
+            ),
+        }
+    )
+    return _normalize_options(options)
 
 
 def _normalize_options(options: list[dict]) -> list[dict]:
