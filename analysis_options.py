@@ -1,9 +1,16 @@
-"""Dataset discovery and suggested analysis options."""
+"""Dataset discovery, cached LLM analysis suggestions, and output naming."""
 
+from datetime import datetime, timezone
+import json
 from pathlib import Path
 import re
 
 import pandas as pd
+
+from llm_client import build_client, generate_json
+
+
+MAX_ANALYSIS_OPTIONS = 5
 
 
 def safe_dataset_id(filename: str) -> str:
@@ -40,77 +47,97 @@ def resolve_dataset_path(input_dir: Path, dataset_name: str) -> Path:
     return dataset_path
 
 
-def suggest_analysis_options(csv_path: Path) -> list[dict]:
-    """Suggest up to three analysis goals based on the dataset columns."""
-    df = pd.read_csv(csv_path, nrows=200)
-    numeric_cols = list(df.select_dtypes(include="number").columns)
-    date_cols = _date_like_columns(df)
-    categorical_cols = list(df.select_dtypes(include=["object", "category", "bool"]).columns)
+def suggest_analysis_options(csv_path: Path, output_dir: Path) -> list[dict]:
+    """
+    Suggest up to five analysis goals using Gemini and cache them.
 
-    options = []
+    The cache is stored at output/analysis.json and invalidated when the dataset
+    size or modification time changes.
+    """
+    output_dir.mkdir(exist_ok=True)
+    cache_path = output_dir / "analysis.json"
+    fingerprint = _dataset_fingerprint(csv_path)
+    cache = _read_cache(cache_path)
+    cached = cache.get("datasets", {}).get(csv_path.name)
 
-    if date_cols and numeric_cols:
-        options.append(
-            {
-                "title": "Trend Analysis",
-                "goal": (
-                    f"Analyze trends over time using {', '.join(date_cols[:2])} and "
-                    f"the numeric measures {', '.join(numeric_cols[:4])}. Identify changes, peaks, dips, and patterns."
-                ),
-            }
-        )
+    if cached and cached.get("fingerprint") == fingerprint and cached.get("options"):
+        return _normalize_options(cached["options"])
 
-    if categorical_cols and numeric_cols:
-        options.append(
-            {
-                "title": "Group Comparison",
-                "goal": (
-                    f"Compare {', '.join(numeric_cols[:4])} across groups such as "
-                    f"{', '.join(categorical_cols[:3])}. Identify top performers and meaningful differences."
-                ),
-            }
-        )
+    options = _generate_options_with_llm(csv_path)
+    cache.setdefault("datasets", {})[csv_path.name] = {
+        "fingerprint": fingerprint,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "options": options,
+    }
+    _write_cache(cache_path, cache)
+    return options
 
-    if len(numeric_cols) >= 2:
-        options.append(
-            {
-                "title": "Relationships and Outliers",
-                "goal": (
-                    f"Explore relationships, correlations, distributions, and outliers among "
-                    f"{', '.join(numeric_cols[:6])}."
-                ),
-            }
-        )
 
-    if len(options) < 3:
-        options.append(
-            {
-                "title": "Dataset Overview",
-                "goal": (
-                    "Create a concise dataset overview covering column quality, missing values, "
-                    "important distributions, and the strongest insights visible in the data."
-                ),
-            }
-        )
+def _generate_options_with_llm(csv_path: Path) -> list[dict]:
+    df = pd.read_csv(csv_path, nrows=10)
+    sample_csv = df.to_csv(index=False)
+    dtypes = df.dtypes.astype(str).to_dict()
 
-    deduped = []
+    prompt = f"""You are helping a user choose useful data analysis goals for a CSV dataset.
+Read only this dataset preview and propose at most {MAX_ANALYSIS_OPTIONS} distinct analyses.
+
+Dataset filename: {csv_path.name}
+Columns and inferred dtypes:
+{json.dumps(dtypes, indent=2)}
+
+First 10 rows as CSV:
+{sample_csv}
+
+Return only valid JSON with this exact shape:
+{{
+  "options": [
+    {{
+      "title": "short option title",
+      "goal": "specific analysis goal the downstream data agent can execute"
+    }}
+  ]
+}}
+
+Rules:
+- Return between 3 and {MAX_ANALYSIS_OPTIONS} options when the data supports it.
+- Make each option meaningfully different.
+- Mention relevant column names in each goal.
+- Do not invent columns that are not in the preview.
+"""
+
+    response = generate_json(build_client(), prompt, "Generate practical CSV analysis options.")
+    return _normalize_options(response.get("options", []))
+
+
+def _normalize_options(options: list[dict]) -> list[dict]:
+    normalized = []
     seen = set()
     for option in options:
-        if option["title"] not in seen:
-            seen.add(option["title"])
-            deduped.append(option)
-    return deduped[:3]
-
-
-def _date_like_columns(df: pd.DataFrame) -> list[str]:
-    date_cols = []
-    for col in df.columns:
-        lower_col = str(col).lower()
-        if "date" in lower_col or "time" in lower_col or "month" in lower_col or "year" in lower_col:
-            date_cols.append(col)
+        title = str(option.get("title", "")).strip()
+        goal = str(option.get("goal", "")).strip()
+        if not title or not goal or title.lower() in seen:
             continue
-        if df[col].dtype == "object":
-            parsed = pd.to_datetime(df[col], errors="coerce")
-            if parsed.notna().mean() >= 0.7:
-                date_cols.append(col)
-    return date_cols
+        seen.add(title.lower())
+        normalized.append({"title": title, "goal": goal})
+    return normalized[:MAX_ANALYSIS_OPTIONS]
+
+
+def _dataset_fingerprint(csv_path: Path) -> dict:
+    stat = csv_path.stat()
+    return {
+        "size_bytes": stat.st_size,
+        "modified_ns": stat.st_mtime_ns,
+    }
+
+
+def _read_cache(cache_path: Path) -> dict:
+    if not cache_path.exists():
+        return {"datasets": {}}
+    try:
+        return json.loads(cache_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {"datasets": {}}
+
+
+def _write_cache(cache_path: Path, cache: dict) -> None:
+    cache_path.write_text(json.dumps(cache, indent=2), encoding="utf-8")

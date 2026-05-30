@@ -7,7 +7,7 @@ DataSense perceives CSV data, suggests analysis paths, plans selected analyses w
 DataSense is an agentic loop. You place CSV files in `input/`, choose a dataset in the UI, and pick one of the suggested analyses. The agent then:
 
 1. Perceives the data structure, column types, statistics, and missing values.
-2. Suggests up to three analysis goals based on the available columns.
+2. Suggests up to five analysis goals based on the first 10 rows, caching them in `output/analysis.json`.
 3. Executes pandas/matplotlib analysis code.
 4. Retries failed code with the error context.
 5. Reports key findings and generated chart paths.
@@ -53,6 +53,7 @@ Each analysis writes to a matching subfolder:
 
 ```text
 output/
+├── analysis.json
 └── your_dataset/
     ├── report.json
     ├── report.md
@@ -98,7 +99,7 @@ datasense/
 | Concept | Implementation |
 |---|---|
 | Perception | CSV parsed into data context with shape, dtypes, samples, stats, and null counts |
-| Suggestions | The app proposes up to three analysis goals from dataset column types |
+| Suggestions | Gemini proposes up to five analysis goals from the first 10 rows, cached in `output/analysis.json` |
 | Decision-making | Gemini chooses analysis steps dynamically based on the selected goal |
 | Action | Python analysis code is executed locally through the sandboxed executor |
 | Memory | Completed steps, chart paths, errors, and retry counts are tracked across iterations |

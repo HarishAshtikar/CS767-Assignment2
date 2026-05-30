@@ -29,6 +29,11 @@ def build_client() -> genai.Client:
 def generate_agent_step(client: genai.Client, messages: list[dict], system_prompt: str) -> dict:
     """Ask Gemini for the next structured agent action."""
     contents = _messages_to_text(messages)
+    return generate_json(client, contents, system_prompt)
+
+
+def generate_json(client: genai.Client, contents: str, system_prompt: str) -> dict:
+    """Ask Gemini for a JSON object."""
     response = _generate_with_retries(client, contents, system_prompt)
     return _parse_json_response(response.text or "")
 

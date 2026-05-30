@@ -52,13 +52,15 @@ def datasets():
 
 @app.get("/api/datasets/{dataset_name}/suggestions")
 def suggestions(dataset_name: str):
-    """Return up to three suggested analysis options for a dataset."""
+    """Return up to five suggested analysis options for a dataset."""
     try:
         csv_path = resolve_dataset_path(INPUT_PATH, dataset_name)
         return {
             "dataset": csv_path.name,
-            "options": suggest_analysis_options(csv_path),
+            "options": suggest_analysis_options(csv_path, OUTPUTS_DIR),
         }
+    except GeminiQuotaError as exc:
+        raise HTTPException(429, str(exc))
     except FileNotFoundError as exc:
         raise HTTPException(404, str(exc))
     except Exception as exc:
