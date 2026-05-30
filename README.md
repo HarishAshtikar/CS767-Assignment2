@@ -32,11 +32,11 @@ python main.py --csv input/sample_data.csv --goal "Summarize trends and generate
 ## Project Layout
 
 ```text
-agent.py              Gemini-guided analysis loop and local fallback
-analysis_options.py   Dataset discovery and suggested analysis goals
-server.py             FastAPI backend
-index.html            Web UI
-main.py               CLI/server entry point
+datasense/            Python package for the app and agent
+datasense/agent.py    Gemini-guided analysis loop and local fallback
+datasense/server.py   FastAPI backend
+index.html            Single-file web UI
+main.py               Root CLI/server launcher
 input/                Local CSV datasets, ignored except .gitkeep
 output/               Generated reports and charts, ignored
 docs/                 Architecture diagrams and demo video
@@ -45,5 +45,5 @@ docs/                 Architecture diagrams and demo video
 ## Verify
 
 ```bash
-python -m py_compile agent.py analysis_options.py config.py data_context.py executor.py llm_client.py main.py server.py
+python -m compileall main.py datasense
 ```

@@ -7,7 +7,7 @@ import re
 
 import pandas as pd
 
-from llm_client import build_client, generate_json
+from .llm_client import build_client, generate_json
 
 
 MAX_ANALYSIS_OPTIONS = 5

@@ -5,11 +5,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from config import DEFAULT_OUTPUTS_DIR, GEMINI_MODEL, MAX_AGENT_ITERATIONS
-from data_context import build_data_context
-from executor import execute_code
-from llm_client import GeminiQuotaError, build_client, generate_agent_step
-from prompts import NEXT_STEP_PROMPT, SYSTEM_PROMPT
+from .config import DEFAULT_OUTPUTS_DIR, GEMINI_MODEL, MAX_AGENT_ITERATIONS
+from .data_context import build_data_context
+from .executor import execute_code
+from .llm_client import GeminiQuotaError, build_client, generate_agent_step
+from .prompts import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 
 
 def run_agent(csv_path: str, user_goal: str, outputs_dir: str = DEFAULT_OUTPUTS_DIR) -> dict:

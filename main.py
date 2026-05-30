@@ -3,9 +3,9 @@
 import argparse
 from pathlib import Path
 
-from agent import run_agent
-from analysis_options import safe_dataset_id
-from config import DEFAULT_OUTPUTS_DIR
+from datasense.agent import run_agent
+from datasense.analysis_options import safe_dataset_id
+from datasense.config import DEFAULT_OUTPUTS_DIR
 
 
 def main() -> None:
@@ -29,7 +29,7 @@ def main() -> None:
         import uvicorn
 
         print(f"Starting DataSense UI at http://{args.host}:{args.port}")
-        uvicorn.run("server:app", host=args.host, port=args.port, reload=True)
+        uvicorn.run("datasense.server:app", host=args.host, port=args.port, reload=True)
         return
 
     csv_path = Path(args.csv)

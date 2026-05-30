@@ -11,8 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
-from agent import run_agent
-from analysis_options import (
+from .agent import run_agent
+from .analysis_options import (
     ensure_analysis_cache,
     get_cached_analysis_options,
     list_csv_datasets,
@@ -20,8 +20,8 @@ from analysis_options import (
     safe_dataset_id,
     suggest_analysis_options,
 )
-from config import DEFAULT_OUTPUTS_DIR, INPUT_DIR
-from llm_client import GeminiQuotaError
+from .config import DEFAULT_OUTPUTS_DIR, INPUT_DIR
+from .llm_client import GeminiQuotaError
 
 
 app = FastAPI(title="DataSense Agent API")
@@ -154,4 +154,4 @@ def health():
 
 
 if __name__ == "__main__":
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("datasense.server:app", host="0.0.0.0", port=8000, reload=True)

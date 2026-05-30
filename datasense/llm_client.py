@@ -9,7 +9,7 @@ from google import genai
 from google.genai import errors
 from google.genai import types
 
-from config import GEMINI_API_KEY, GEMINI_FALLBACK_MODELS, GEMINI_MAX_RETRIES, GEMINI_MODEL
+from .config import GEMINI_API_KEY, GEMINI_FALLBACK_MODELS, GEMINI_MAX_RETRIES, GEMINI_MODEL
 
 
 class GeminiQuotaError(RuntimeError):
