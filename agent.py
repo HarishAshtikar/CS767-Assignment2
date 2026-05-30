@@ -1,11 +1,14 @@
 """DataSense agent loop."""
 
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from config import DEFAULT_OUTPUTS_DIR, GEMINI_MODEL, MAX_AGENT_ITERATIONS
 from data_context import build_data_context
 from executor import execute_code
-from llm_client import build_client, generate_agent_step
+from llm_client import GeminiQuotaError, build_client, generate_agent_step
 from prompts import NEXT_STEP_PROMPT, SYSTEM_PROMPT
 
 
@@ -56,7 +59,12 @@ Save all charts to: {outputs_dir}/<name>.png
 
     for iteration in range(MAX_AGENT_ITERATIONS):
         print(f"[Iteration {iteration + 1}] Calling Gemini...")
-        step = generate_agent_step(client, messages, SYSTEM_PROMPT)
+        try:
+            step = generate_agent_step(client, messages, SYSTEM_PROMPT)
+        except GeminiQuotaError:
+            print("  Gemini quota exhausted. Running local fallback analysis.")
+            return run_local_analysis(df, user_goal, outputs_dir)
+
         action = step.get("action")
         description = step.get("description", f"step_{iteration + 1}")
 
@@ -119,6 +127,92 @@ Save all charts to: {outputs_dir}/<name>.png
     print(f"{'=' * 60}\n")
 
     return final_report
+
+
+def run_local_analysis(df: pd.DataFrame, user_goal: str, outputs_dir: str = DEFAULT_OUTPUTS_DIR) -> dict:
+    """Produce a useful deterministic report when Gemini is unavailable."""
+    output_path = Path(outputs_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    numeric_columns = list(df.select_dtypes(include="number").columns)
+    categorical_columns = [column for column in df.columns if column not in numeric_columns]
+    charts_generated = []
+
+    if numeric_columns:
+        df[numeric_columns[:6]].hist(figsize=(12, 8), bins=20)
+        figure = plt.gcf()
+        figure.suptitle("Numeric Distributions")
+        figure.tight_layout()
+        chart_path = output_path / "numeric_distributions.png"
+        figure.savefig(chart_path, dpi=150)
+        plt.close(figure)
+        charts_generated.append(str(chart_path))
+
+    if len(numeric_columns) >= 2:
+        figure = df[numeric_columns].corr(numeric_only=True).plot(
+            kind="bar",
+            figsize=(12, 7),
+            title="Numeric Correlations",
+        ).figure
+        figure.tight_layout()
+        chart_path = output_path / "numeric_correlations.png"
+        figure.savefig(chart_path, dpi=150)
+        plt.close(figure)
+        charts_generated.append(str(chart_path))
+
+    for column in categorical_columns[:1]:
+        counts = df[column].astype(str).value_counts(dropna=False).head(12)
+        figure = counts.plot(kind="bar", figsize=(10, 6), title=f"Top Values: {column}").figure
+        figure.tight_layout()
+        chart_path = output_path / f"top_values_{_safe_chart_name(column)}.png"
+        figure.savefig(chart_path, dpi=150)
+        plt.close(figure)
+        charts_generated.append(str(chart_path))
+
+    missing_total = int(df.isna().sum().sum())
+    duplicate_rows = int(df.duplicated().sum())
+    key_findings = [
+        f"The dataset contains {len(df):,} rows and {len(df.columns):,} columns.",
+        f"Detected {len(numeric_columns):,} numeric columns and {len(categorical_columns):,} non-numeric columns.",
+        f"Found {missing_total:,} missing values and {duplicate_rows:,} duplicate rows.",
+    ]
+
+    if numeric_columns:
+        summary_stats = df[numeric_columns].describe().loc[["mean", "min", "max"]].round(3)
+        key_findings.append(
+            "Numeric summary: "
+            + "; ".join(
+                f"{column} mean={summary_stats.at['mean', column]}, min={summary_stats.at['min', column]}, max={summary_stats.at['max', column]}"
+                for column in numeric_columns[:4]
+            )
+        )
+
+    if categorical_columns:
+        column = categorical_columns[0]
+        top_value = df[column].astype(str).value_counts(dropna=False).head(1)
+        if not top_value.empty:
+            key_findings.append(f"The most common value in {column} is {top_value.index[0]} ({int(top_value.iloc[0]):,} rows).")
+
+    summary = "\n\n".join(
+        [
+            "## Local analysis fallback",
+            "Gemini quota was unavailable, so DataSense generated this deterministic pandas report locally.",
+            f"**Goal:** {user_goal}",
+            "\n".join(f"- {finding}" for finding in key_findings),
+        ]
+    )
+
+    return {
+        "summary": summary,
+        "key_findings": key_findings,
+        "charts_generated": charts_generated,
+        "steps_completed": ["Ran local pandas summary", "Generated fallback charts"],
+        "iterations": 0,
+    }
+
+
+def _safe_chart_name(value: object) -> str:
+    return "".join(char if char.isalnum() else "_" for char in str(value)).strip("_") or "column"
 
 
 if __name__ == "__main__":
