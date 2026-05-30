@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DataSense Agent — Assignment Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fff;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 18mm 20mm 16mm;
+    background: white;
+    page-break-after: always;
+    position: relative;
+  }
+
+  @media print {
+    .page { page-break-after: always; margin: 0; }
+    body { background: white; }
+  }
+
+  .page-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 8pt;
+    color: #aaa;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6mm;
+    border-bottom: 0.5px solid #e0e0e0;
+    padding-bottom: 4mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 26pt;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: #0e0f11;
+    margin-bottom: 2mm;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: #4a7c1f;
+  }
+
+  .tagline {
+    font-size: 10pt;
+    color: #666;
+    margin-bottom: 6mm;
+    font-weight: 300;
+  }
+
+  h2 {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 11pt;
+    color: #1a1a1a;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 5mm 0 2mm;
+    border-bottom: 0.5px solid #e0e0e0;
+    padding-bottom: 1.5mm;
+  }
+
+  p { margin-bottom: 2.5mm; font-size: 10.5pt; }
+
+  .repo-box {
+    background: #f4f4f2;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 9.5pt;
+    color: #333;
+    margin-bottom: 5mm;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .repo-box span { color: #aaa; }
+
+  .diagram-container {
+    border: 0.5px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 8px;
+    background: #fafafa;
+    margin: 4mm 0;
+  }
+
+  .diagram-container img {
+    width: 100%;
+    display: block;
+  }
+
+  .diagram-placeholder {
+    background: #f8f8f6;
+    border: 1.5px dashed #ccc;
+    border-radius: 8px;
+    padding: 16mm 10mm;
+    text-align: center;
+    color: #999;
+    font-size: 9pt;
+    font-family: 'DM Mono', monospace;
+    margin: 3mm 0;
+  }
+
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4mm;
+    margin: 3mm 0;
+  }
+
+  .arch-card {
+    border: 0.5px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    background: #fafafa;
+  }
+
+  .arch-card .label {
+    font-size: 8.5pt;
+    font-weight: 500;
+    font-family: 'DM Mono', monospace;
+    color: #4a7c1f;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+
+  .arch-card p {
+    font-size: 9.5pt;
+    color: #444;
+    margin: 0;
+  }
+
+  .tech-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 2mm 0 4mm;
+  }
+
+  .tech-pill {
+    background: #eef7e5;
+    border: 0.5px solid #b5d87a;
+    border-radius: 100px;
+    font-size: 8.5pt;
+    font-family: 'DM Mono', monospace;
+    color: #3a6518;
+    padding: 2px 9px;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 3mm 0;
+    flex-wrap: wrap;
+  }
+
+  .flow-step {
+    background: #0e0f11;
+    color: #c8f566;
+    font-family: 'DM Mono', monospace;
+    font-size: 8.5pt;
+    padding: 3px 10px;
+    border-radius: 100px;
+  }
+
+  .flow-arrow { color: #bbb; font-size: 10pt; }
+
+  .screenshot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4mm;
+    margin: 3mm 0;
+  }
+
+  .screenshot-box {
+    border: 0.5px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fafafa;
+  }
+
+  .screenshot-box .caption {
+    padding: 4px 8px;
+    font-size: 8.5pt;
+    color: #666;
+    border-top: 0.5px solid #e0e0e0;
+    background: white;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .screenshot-placeholder {
+    height: 52mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #bbb;
+    font-size: 8.5pt;
+    font-family: 'DM Mono', monospace;
+    background: #f8f8f6;
+    border: 1.5px dashed #ddd;
+    border-radius: 5px;
+    text-align: center;
+    padding: 8px;
+  }
+
+  .concepts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    margin: 3mm 0;
+  }
+
+  .concepts-table th {
+    background: #0e0f11;
+    color: #c8f566;
+    font-family: 'DM Mono', monospace;
+    font-size: 8.5pt;
+    font-weight: 500;
+    padding: 5px 8px;
+    text-align: left;
+  }
+
+  .concepts-table td {
+    padding: 4px 8px;
+    border-bottom: 0.5px solid #eee;
+    vertical-align: top;
+    color: #333;
+  }
+
+  .concepts-table tr:last-child td { border-bottom: none; }
+  .concepts-table td:first-child { font-family: 'DM Mono', monospace; font-size: 8.5pt; color: #4a7c1f; font-weight: 500; }
+
+  .note-box {
+    background: #fffbe6;
+    border-left: 3px solid #e6c84a;
+    border-radius: 0 4px 4px 0;
+    padding: 5px 10px;
+    font-size: 9.5pt;
+    color: #555;
+    margin: 3mm 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="page-label">
+    <span>Intelligent Software Agent — Assignment Report</span>
+    <span>Page 1 of 2</span>
+  </div>
+
+  <h1>Data<em>Sense</em></h1>
+  <p class="tagline">An autonomous data analysis agent that perceives CSV data, plans and executes analyses, and generates reports.</p>
+
+  <h2>GitHub Repository</h2>
+  <div class="repo-box">
+    <span>🔗</span>
+    https://github.com/YOUR_USERNAME/datasense-agent
+  </div>
+  <div class="repo-box">
+    <span>▶</span>
+    Demo video: https://github.com/YOUR_USERNAME/datasense-agent#demo
+  </div>
+
+  <h2>Tech Stack</h2>
+  <div class="tech-stack">
+    <span class="tech-pill">Python 3.11</span>
+    <span class="tech-pill">Anthropic claude-sonnet-4</span>
+    <span class="tech-pill">FastAPI</span>
+    <span class="tech-pill">pandas</span>
+    <span class="tech-pill">matplotlib</span>
+    <span class="tech-pill">HTML/JS UI</span>
+  </div>
+
+  <h2>System Design Diagram</h2>
+
+  <div class="diagram-placeholder">
+    [ PASTE SCREENSHOT OF THE SYSTEM DIAGRAM HERE ]<br>
+    (screenshot the diagram shown in Claude, or export from README)
+  </div>
+
+  <h2>Architecture Explanation</h2>
+  <p>DataSense implements a <strong>goal-directed agentic loop</strong> using Claude claude-sonnet-4 as the planning and reasoning core. The agent uses Anthropic's tool-use API to take real actions — executing Python code and producing charts — rather than just generating text.</p>
+
+  <div class="arch-grid">
+    <div class="arch-card">
+      <div class="label">01 · Perception</div>
+      <p>Reads the CSV and builds a rich context: shape, column types, statistical summary, missing values, and the first 5 rows. This is passed verbatim to the LLM as its "view of the world."</p>
+    </div>
+    <div class="arch-card">
+      <div class="label">02 · Planning (LLM)</div>
+      <p>Claude autonomously decides which analyses to perform and in what order, based on the data context and the user's stated goal. No hardcoded analysis steps — the plan emerges from reasoning.</p>
+    </div>
+    <div class="arch-card">
+      <div class="label">03 · Tool Execution</div>
+      <p>Two tools: <code>execute_python</code> runs sandboxed pandas/matplotlib code and saves charts as PNGs; <code>finish_report</code> ends the loop and returns the final narrative report.</p>
+    </div>
+    <div class="arch-card">
+      <div class="label">04 · Memory & Safety</div>
+      <p>A <code>memory</code> dict tracks completed steps, generated charts, errors, and retry counts. If code fails, the error is fed back to the LLM for self-correction. Max 12 iterations prevents runaway loops.</p>
+    </div>
+  </div>
+
+  <h2>Agentic Loop Flow</h2>
+  <div class="flow-row">
+    <span class="flow-step">CSV + goal</span><span class="flow-arrow">→</span>
+    <span class="flow-step">build context</span><span class="flow-arrow">→</span>
+    <span class="flow-step">Claude plans</span><span class="flow-arrow">→</span>
+    <span class="flow-step">execute tool</span><span class="flow-arrow">→</span>
+    <span class="flow-step">check result</span><span class="flow-arrow">→</span>
+    <span class="flow-step">retry / continue</span><span class="flow-arrow">→</span>
+    <span class="flow-step">finish report</span>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="page-label">
+    <span>Intelligent Software Agent — Assignment Report</span>
+    <span>Page 2 of 2</span>
+  </div>
+
+  <h2>How the System Works — Screenshots</h2>
+
+  <div class="screenshot-grid">
+    <div class="screenshot-box">
+      <div class="screenshot-placeholder">[ SCREENSHOT 1 ]<br>Web UI — upload screen<br>showing CSV drop zone and goal input</div>
+      <div class="caption">01 — User uploads CSV and enters analysis goal</div>
+    </div>
+    <div class="screenshot-box">
+      <div class="screenshot-placeholder">[ SCREENSHOT 2 ]<br>Progress screen<br>showing agent step-by-step log</div>
+      <div class="caption">02 — Agent loop runs: planning → execution → retry</div>
+    </div>
+    <div class="screenshot-box">
+      <div class="screenshot-placeholder">[ SCREENSHOT 3 ]<br>Results screen<br>showing key findings cards</div>
+      <div class="caption">03 — Key findings extracted by the agent</div>
+    </div>
+    <div class="screenshot-box">
+      <div class="screenshot-placeholder">[ SCREENSHOT 4 ]<br>Generated charts<br>matplotlib PNGs displayed in UI</div>
+      <div class="caption">04 — Matplotlib charts auto-generated by agent</div>
+    </div>
+  </div>
+
+  <div class="note-box">
+    To take screenshots: run <code>python server.py</code>, open localhost:8000, upload any CSV (e.g. Titanic or sample_sales), submit a goal, and screenshot each stage.
+  </div>
+
+  <h2>Agent Concepts Demonstrated</h2>
+  <table class="concepts-table">
+    <tr>
+      <th>Concept</th>
+      <th>Implementation in DataSense</th>
+    </tr>
+    <tr>
+      <td>Perception</td>
+      <td>CSV is parsed and converted to a structured context block (shape, dtypes, head, stats, null counts) sent to the LLM as its sensory input.</td>
+    </tr>
+    <tr>
+      <td>Decision-making</td>
+      <td>Claude claude-sonnet-4 autonomously selects which analyses to run — no fixed analysis pipeline. Decisions are driven by the data and user goal.</td>
+    </tr>
+    <tr>
+      <td>Action</td>
+      <td>The <code>execute_python</code> tool runs real Python code (pandas, matplotlib) in a sandboxed namespace. Results are real outputs — charts saved to disk, statistics printed to stdout.</td>
+    </tr>
+    <tr>
+      <td>Memory</td>
+      <td>A Python dict tracks completed steps, generated chart paths, all errors encountered, and per-step retry counts across the entire loop.</td>
+    </tr>
+    <tr>
+      <td>Error recovery</td>
+      <td>If code execution fails, the full error traceback is fed back into the conversation. Claude reads the error and rewrites the code. Max 2 retries per step.</td>
+    </tr>
+    <tr>
+      <td>Safety</td>
+      <td>Code runs in a restricted namespace with a whitelisted <code>__builtins__</code> dict. Dangerous functions (file I/O, network, imports) are not available. <code>plt.savefig</code> is patched to force output to the session directory.</td>
+    </tr>
+    <tr>
+      <td>Goal-directed loop</td>
+      <td>The agent continues until <code>finish_report</code> is called or 12 iterations are reached — a classic sense-plan-act loop with a terminal condition.</td>
+    </tr>
+  </table>
+
+  <h2>Design Evolution (Commit Checkpoints)</h2>
+  <table class="concepts-table">
+    <tr><th>Checkpoint</th><th>Change &amp; Rationale</th></tr>
+    <tr><td>v0.1</td><td>Basic script: hardcoded analysis steps. Not an agent — no LLM decision-making.</td></tr>
+    <tr><td>v0.2</td><td>Added Claude tool-use loop. Agent now plans its own steps. Removed hardcoding.</td></tr>
+    <tr><td>v0.3</td><td>Added retry logic and memory dict. Agent can recover from code errors automatically.</td></tr>
+    <tr><td>v0.4</td><td>Added sandboxed code execution for safety. Restricted builtins, patched savefig.</td></tr>
+    <tr><td>v1.0</td><td>Added FastAPI backend + web UI. Full end-to-end product with visual output.</td></tr>
+  </table>
+</div>
+
+</body>
+</html>

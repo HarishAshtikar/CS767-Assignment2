@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataSense — Autonomous Data Analysis Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f11;
+    --surface: #16181c;
+    --surface2: #1e2026;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0ede8;
+    --muted: #7a7872;
+    --accent: #c8f566;
+    --accent2: #a3d44f;
+    --danger: #ff6b6b;
+    --info: #66b8ff;
+    --radius: 12px;
+    --font-sans: 'DM Sans', sans-serif;
+    --font-display: 'Fraunces', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(200,245,102,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200,245,102,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Header */
+  header {
+    padding: 52px 0 40px;
+    text-align: center;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(200,245,102,0.1);
+    border: 1px solid rgba(200,245,102,0.2);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    padding: 4px 12px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: clamp(36px, 6vw, 56px);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+    font-weight: 300;
+  }
+
+  /* Upload card */
+  .upload-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 36px;
+    margin-bottom: 24px;
+  }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(200,245,102,0.04);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    width: 44px; height: 44px;
+    background: var(--surface2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 20px;
+  }
+
+  .drop-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .drop-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .file-selected {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(200,245,102,0.08);
+    border: 1px solid rgba(200,245,102,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  .goal-section {
+    margin-top: 24px;
+  }
+
+  .goal-section label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .goal-section textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    padding: 14px 16px;
+    resize: vertical;
+    min-height: 90px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .goal-section textarea:focus {
+    border-color: rgba(200,245,102,0.4);
+  }
+
+  .goal-section textarea::placeholder {
+    color: var(--muted);
+  }
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .preset-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    color: var(--muted);
+    font-size: 12px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .preset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .run-btn {
+    width: 100%;
+    margin-top: 24px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #0e0f11;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .run-btn:hover:not(:disabled) {
+    background: var(--accent2);
+    transform: translateY(-1px);
+  }
+
+  .run-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Progress */
+  .progress-section {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 24px;
+  }
+
+  .progress-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-title {
+    font-weight: 500;
+    font-size: 16px;
+  }
+
+  .steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--surface2);
+    font-family: var(--font-mono);
+    opacity: 0;
+    animation: fadeIn 0.3s forwards;
+  }
+
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .step-dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  /* Results */
+  .results-section {
+    display: none;
+    margin-bottom: 40px;
+  }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .results-title {
+    font-family: var(--font-display);
+    font-weight: 300;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+
+  .tag {
+    background: rgba(200,245,102,0.1);
+    border: 1px solid rgba(200,245,102,0.2);
+    color: var(--accent);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+
+  .findings-grid {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .finding-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .finding-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(200,245,102,0.1);
+    border-radius: 5px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .finding-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .charts-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .chart-card img {
+    width: 100%;
+    display: block;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+
+  .summary-card h3 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .summary-text {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 20px;
+  }
+
+  .reset-btn:hover {
+    border-color: var(--text);
+    color: var(--text);
+  }
+
+  /* Error */
+  .error-box {
+    display: none;
+    background: rgba(255,107,107,0.08);
+    border: 1px solid rgba(255,107,107,0.2);
+    border-radius: var(--radius);
+    padding: 16px;
+    color: var(--danger);
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 40px 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    border-top: 1px solid var(--border);
+  }
+
+  /* How it works */
+  .how-section {
+    margin: 32px 0;
+    padding: 28px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .how-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .how-steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .how-steps { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .how-step {
+    text-align: center;
+  }
+
+  .how-step-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .how-step-label {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  .how-step-sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .arrow-sep {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--border2);
+    font-size: 18px;
+    padding-top: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">
+      <span class="badge-dot"></span>
+      AGENT ACTIVE
+    </div>
+    <h1>Data<em>Sense</em></h1>
+    <p class="subtitle">Drop a CSV. Describe your goal. Watch an autonomous agent plan, execute, and report.</p>
+  </header>
+
+  <div class="how-section">
+    <p class="how-title">How the agent works</p>
+    <div style="display:grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap:4px; align-items:center;">
+      <div class="how-step">
+        <div class="how-step-num">01</div>
+        <div class="how-step-label">Perceive</div>
+        <div class="how-step-sub">Reads CSV structure & your goal</div>
+      </div>
+      <div class="arrow-sep">→</div>
+      <div class="how-step">
+        <div class="how-step-num">02</div>
+        <div class="how-step-label">Plan</div>
+        <div class="how-step-sub">Claude decides which analyses to run</div>
+      </div>
+      <div class="arrow-sep">→</div>
+      <div class="how-step">
+        <div class="how-step-num">03</div>
+        <div class="how-step-label">Execute</div>
+        <div class="how-step-sub">Runs Python, retries on errors</div>
+      </div>
+      <div class="arrow-sep">→</div>
+      <div class="how-step">
+        <div class="how-step-num">04</div>
+        <div class="how-step-label">Report</div>
+        <div class="how-step-sub">Generates charts + narrative summary</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- Upload -->
+  <div class="upload-card" id="uploadCard">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="csvInput" accept=".csv">
+      <div class="drop-icon">📊</div>
+      <div class="drop-title">Drop your CSV here</div>
+      <div class="drop-sub">or click to browse</div>
+    </div>
+    <div class="file-selected" id="fileSelected">
+      <span>✓</span>
+      <span id="fileName">file.csv</span>
+    </div>
+
+    <div class="goal-section">
+      <label>Analysis Goal</label>
+      <textarea id="goalInput" placeholder="e.g. Understand sales trends, identify top-performing regions, and spot any seasonal patterns..."></textarea>
+      <div class="presets">
+        <button class="preset-btn" onclick="setGoal('Identify trends, top performers, and key insights')">Trends & insights</button>
+        <button class="preset-btn" onclick="setGoal('Find correlations between columns and visualize distributions')">Correlations</button>
+        <button class="preset-btn" onclick="setGoal('Detect outliers and anomalies in the data')">Outliers</button>
+        <button class="preset-btn" onclick="setGoal('Compare groups and summarize differences')">Group comparison</button>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()" disabled>
+      <span>▶</span> Run Agent
+    </button>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-section" id="progressSection">
+    <div class="progress-header">
+      <div class="spinner"></div>
+      <div>
+        <div class="progress-title">Agent is working...</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:2px;" id="progressSub">Initializing analysis</div>
+      </div>
+    </div>
+    <div class="steps-list" id="stepsList"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-section" id="resultsSection">
+    <div class="results-header">
+      <div class="results-title">Analysis Complete</div>
+      <div class="tag" id="iterTag">— iterations</div>
+    </div>
+
+    <div class="findings-grid" id="findingsGrid"></div>
+
+    <p class="charts-title">Generated Charts</p>
+    <div class="charts-grid" id="chartsGrid"></div>
+
+    <div class="summary-card">
+      <h3>Full Report</h3>
+      <div class="summary-text" id="summaryText"></div>
+    </div>
+
+    <button class="reset-btn" onclick="resetUI()">← Run another analysis</button>
+  </div>
+
+  <footer>
+    DataSense Agent · Built with Claude claude-sonnet-4 · Autonomous Analysis
+  </footer>
+</div>
+
+<script>
+  const csvInput = document.getElementById('csvInput');
+  const dropZone = document.getElementById('dropZone');
+  const fileSelected = document.getElementById('fileSelected');
+  const fileName = document.getElementById('fileName');
+  const goalInput = document.getElementById('goalInput');
+  const runBtn = document.getElementById('runBtn');
+  const errorBox = document.getElementById('errorBox');
+
+  let selectedFile = null;
+
+  function checkReady() {
+    runBtn.disabled = !(selectedFile && goalInput.value.trim());
+  }
+
+  csvInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) {
+      selectedFile = e.target.files[0];
+      fileName.textContent = selectedFile.name;
+      fileSelected.style.display = 'flex';
+      checkReady();
+    }
+  });
+
+  goalInput.addEventListener('input', checkReady);
+
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.endsWith('.csv')) {
+      selectedFile = f;
+      fileName.textContent = f.name;
+      fileSelected.style.display = 'flex';
+      checkReady();
+    }
+  });
+
+  function setGoal(text) {
+    goalInput.value = text;
+    checkReady();
+  }
+
+  const progressSteps = [
+    "Reading CSV structure and statistics...",
+    "Planning analysis strategy...",
+    "Executing statistical analyses...",
+    "Generating visualizations...",
+    "Checking results and retrying if needed...",
+    "Writing final report...",
+  ];
+
+  function addStep(text) {
+    const list = document.getElementById('stepsList');
+    const item = document.createElement('div');
+    item.className = 'step-item';
+    item.innerHTML = `<div class="step-dot"></div><span>${text}</span>`;
+    list.appendChild(item);
+    list.scrollTop = list.scrollHeight;
+  }
+
+  let stepInterval;
+
+  async function runAnalysis() {
+    errorBox.style.display = 'none';
+    
+    if (!selectedFile || !goalInput.value.trim()) return;
+
+    document.getElementById('uploadCard').style.display = 'none';
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+
+    let stepIdx = 0;
+    addStep(progressSteps[stepIdx++]);
+    stepInterval = setInterval(() => {
+      if (stepIdx < progressSteps.length) {
+        addStep(progressSteps[stepIdx++]);
+      }
+    }, 4000);
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('goal', goalInput.value.trim());
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      clearInterval(stepInterval);
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Server error');
+      }
+
+      const data = await res.json();
+      showResults(data);
+
+    } catch (err) {
+      clearInterval(stepInterval);
+      document.getElementById('progressSection').style.display = 'none';
+      document.getElementById('uploadCard').style.display = 'block';
+      errorBox.textContent = `Error: ${err.message}`;
+      errorBox.style.display = 'block';
+    }
+  }
+
+  function showResults(data) {
+    document.getElementById('progressSection').style.display = 'none';
+    const resultsSection = document.getElementById('resultsSection');
+    resultsSection.style.display = 'block';
+
+    document.getElementById('iterTag').textContent = `${data.iterations} agent iterations`;
+
+    const findingsGrid = document.getElementById('findingsGrid');
+    findingsGrid.innerHTML = '';
+    (data.key_findings || []).forEach((f, i) => {
+      findingsGrid.innerHTML += `
+        <div class="finding-card">
+          <div class="finding-num">F${String(i+1).padStart(2,'0')}</div>
+          <div class="finding-text">${f}</div>
+        </div>`;
+    });
+
+    const chartsGrid = document.getElementById('chartsGrid');
+    chartsGrid.innerHTML = '';
+    (data.charts || []).forEach(url => {
+      chartsGrid.innerHTML += `
+        <div class="chart-card">
+          <img src="${url}" alt="Analysis chart" loading="lazy">
+        </div>`;
+    });
+
+    if (!data.charts || data.charts.length === 0) {
+      chartsGrid.innerHTML = '<p style="color:var(--muted); font-size:13px;">No charts were generated.</p>';
+    }
+
+    document.getElementById('summaryText').textContent = data.summary || '';
+  }
+
+  function resetUI() {
+    document.getElementById('uploadCard').style.display = 'block';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('progressSection').style.display = 'none';
+    document.getElementById('stepsList').innerHTML = '';
+    selectedFile = null;
+    fileSelected.style.display = 'none';
+    csvInput.value = '';
+    goalInput.value = '';
+    runBtn.disabled = true;
+  }
+</script>
+</body>
+</html>
