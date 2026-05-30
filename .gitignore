@@ -2,5 +2,7 @@
 .venv/
 outputs/
 output/
+input/*
+!input/.gitkeep
 __pycache__/
 *.py[cod]

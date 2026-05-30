@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from agent import run_agent
+from config import DEFAULT_OUTPUTS_DIR
 
 
 def main() -> None:
@@ -14,7 +15,7 @@ def main() -> None:
         default="Understand the dataset, identify important patterns, and generate useful charts.",
         help="Natural-language analysis goal.",
     )
-    parser.add_argument("--outputs-dir", default="outputs", help="Directory for generated charts.")
+    parser.add_argument("--outputs-dir", default=DEFAULT_OUTPUTS_DIR, help="Directory for generated charts.")
     parser.add_argument("--serve", action="store_true", help="Start the FastAPI web server instead.")
     parser.add_argument("--host", default="0.0.0.0", help="Host for --serve.")
     parser.add_argument("--port", type=int, default=8000, help="Port for --serve.")

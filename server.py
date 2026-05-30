@@ -1,20 +1,21 @@
-"""
-DataSense Agent - FastAPI Backend
-Handles file upload, runs agent, streams progress, returns results.
-"""
+"""DataSense Agent - FastAPI backend."""
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-import shutil
-import os
-import uuid
-import json
 from pathlib import Path
+import json
+import shutil
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import uvicorn
+
 from agent import run_agent
+from analysis_options import list_csv_datasets, resolve_dataset_path, safe_dataset_id, suggest_analysis_options
+from config import DEFAULT_OUTPUTS_DIR, INPUT_DIR
 from llm_client import GeminiQuotaError
+
 
 app = FastAPI(title="DataSense Agent API")
 
@@ -25,13 +26,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = Path("uploads")
-OUTPUTS_DIR = Path("outputs")
-UPLOAD_DIR.mkdir(exist_ok=True)
+INPUT_PATH = Path(INPUT_DIR)
+OUTPUTS_DIR = Path(DEFAULT_OUTPUTS_DIR)
+INPUT_PATH.mkdir(exist_ok=True)
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
-# Serve generated chart files and the single-file UI.
-app.mount("/outputs", StaticFiles(directory="outputs"), name="outputs")
+app.mount("/output", StaticFiles(directory=str(OUTPUTS_DIR)), name="output")
+
+
+class AnalyzeRequest(BaseModel):
+    dataset: str
+    goal: str
 
 
 @app.get("/")
@@ -39,65 +44,91 @@ def index():
     return FileResponse("index.html")
 
 
+@app.get("/api/datasets")
+def datasets():
+    """Return CSV datasets available in the input folder."""
+    return {"datasets": list_csv_datasets(INPUT_PATH)}
+
+
+@app.get("/api/datasets/{dataset_name}/suggestions")
+def suggestions(dataset_name: str):
+    """Return up to three suggested analysis options for a dataset."""
+    try:
+        csv_path = resolve_dataset_path(INPUT_PATH, dataset_name)
+        return {
+            "dataset": csv_path.name,
+            "options": suggest_analysis_options(csv_path),
+        }
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc))
+    except Exception as exc:
+        raise HTTPException(400, str(exc))
+
+
 @app.post("/api/analyze")
-async def analyze(
-    file: UploadFile = File(...),
-    goal: str = Form(...),
-):
-    """Upload CSV + goal → run agent → return report + chart URLs"""
-    
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(400, "Only CSV files are supported")
-
-    # Save uploaded file
-    session_id = str(uuid.uuid4())[:8]
-    csv_path = UPLOAD_DIR / f"{session_id}_{file.filename}"
-    
-    with open(csv_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    # Run outputs to session-specific folder
-    session_outputs = OUTPUTS_DIR / session_id
-    session_outputs.mkdir(exist_ok=True)
+async def analyze(request: AnalyzeRequest):
+    """Run the selected dataset and analysis goal, then return persisted output."""
+    if not request.goal.strip():
+        raise HTTPException(400, "Analysis goal is required")
 
     try:
+        csv_path = resolve_dataset_path(INPUT_PATH, request.dataset)
+        dataset_stem = safe_dataset_id(csv_path.name)
+        dataset_outputs = OUTPUTS_DIR / dataset_stem
+
+        if dataset_outputs.exists():
+            shutil.rmtree(dataset_outputs)
+        dataset_outputs.mkdir(parents=True, exist_ok=True)
+
         report = run_agent(
             csv_path=str(csv_path),
-            user_goal=goal,
-            outputs_dir=str(session_outputs),
+            user_goal=request.goal.strip(),
+            outputs_dir=str(dataset_outputs),
         )
-        
-        # Convert chart paths to URLs
+
+        report_payload = {
+            "dataset": csv_path.name,
+            "output_folder": str(dataset_outputs),
+            "goal": request.goal.strip(),
+            **report,
+        }
+        (dataset_outputs / "report.json").write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
+        (dataset_outputs / "report.md").write_text(report.get("summary", ""), encoding="utf-8")
+
         chart_urls = []
         for chart_path in report.get("charts_generated", []):
             filename = Path(chart_path).name
-            chart_urls.append(f"/outputs/{session_id}/{filename}")
-        
-        return JSONResponse({
-            "success": True,
-            "session_id": session_id,
-            "summary": report["summary"],
-            "key_findings": report["key_findings"],
-            "charts": chart_urls,
-            "steps_completed": report.get("steps_completed", []),
-            "iterations": report.get("iterations", 0),
-        })
+            chart_urls.append(f"/output/{dataset_stem}/{filename}")
 
-    except GeminiQuotaError as e:
-        raise HTTPException(429, str(e))
+        return JSONResponse(
+            {
+                "success": True,
+                "dataset": csv_path.name,
+                "output_folder": f"output/{dataset_stem}",
+                "summary": report["summary"],
+                "key_findings": report["key_findings"],
+                "charts": chart_urls,
+                "steps_completed": report.get("steps_completed", []),
+                "iterations": report.get("iterations", 0),
+            }
+        )
 
-    except Exception as e:
-        raise HTTPException(500, f"Agent error: {str(e)}")
-
-    finally:
-        # Clean up upload
-        if csv_path.exists():
-            os.remove(csv_path)
+    except GeminiQuotaError as exc:
+        raise HTTPException(429, str(exc))
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc))
+    except Exception as exc:
+        raise HTTPException(500, f"Agent error: {str(exc)}")
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "agent": "DataSense v1.0"}
+    return {
+        "status": "ok",
+        "agent": "DataSense v1.0",
+        "input_dir": str(INPUT_PATH),
+        "output_dir": str(OUTPUTS_DIR),
+    }
 
 
 if __name__ == "__main__":

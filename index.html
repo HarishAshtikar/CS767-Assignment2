@@ -3,812 +3,612 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DataSense — Autonomous Data Analysis Agent</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>DataSense</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+  *, *::before, *::after { box-sizing: border-box; }
   :root {
-    --bg: #0e0f11;
-    --surface: #16181c;
-    --surface2: #1e2026;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.14);
-    --text: #f0ede8;
-    --muted: #7a7872;
-    --accent: #c8f566;
-    --accent2: #a3d44f;
-    --danger: #ff6b6b;
-    --info: #66b8ff;
-    --radius: 12px;
-    --font-sans: 'DM Sans', sans-serif;
-    --font-display: 'Fraunces', serif;
-    --font-mono: 'DM Mono', monospace;
+    --bg: #111312;
+    --panel: #191d1b;
+    --panel-2: #202522;
+    --line: #303730;
+    --line-strong: #465144;
+    --text: #f3f0e8;
+    --muted: #a8aaa0;
+    --quiet: #74786d;
+    --accent: #c7ef6a;
+    --accent-dark: #202a15;
+    --danger: #ff7a76;
+    --blue: #8dc9ff;
+    --shadow: 0 18px 60px rgba(0, 0, 0, 0.26);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
-
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 1.6;
+    margin: 0;
     min-height: 100vh;
+    color: var(--text);
+    background: var(--bg);
   }
-
-  /* Grid background */
   body::before {
-    content: '';
+    content: "";
     position: fixed;
     inset: 0;
-    background-image: 
-      linear-gradient(rgba(200,245,102,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(200,245,102,0.03) 1px, transparent 1px);
-    background-size: 48px 48px;
+    background:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 42px 42px;
     pointer-events: none;
-    z-index: 0;
   }
-
-  .container {
+  button, textarea { font: inherit; }
+  button { cursor: pointer; }
+  .shell {
     position: relative;
     z-index: 1;
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 0 24px;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
   }
-
-  /* Header */
-  header {
-    padding: 52px 0 40px;
-    text-align: center;
+  aside {
+    border-right: 1px solid var(--line);
+    background: rgba(25, 29, 27, 0.88);
+    padding: 24px;
   }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(200,245,102,0.1);
-    border: 1px solid rgba(200,245,102,0.2);
-    color: var(--accent);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    padding: 4px 12px;
-    border-radius: 100px;
-    margin-bottom: 20px;
+  main {
+    padding: 26px;
+    min-width: 0;
   }
-
-  .badge-dot {
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
+  .brand {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
   }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
   h1 {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: clamp(36px, 6vw, 56px);
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-    margin-bottom: 16px;
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 0;
+    font-weight: 650;
   }
-
-  h1 em {
-    font-style: italic;
+  .pill {
+    border: 1px solid rgba(199,239,106,0.28);
     color: var(--accent);
-  }
-
-  .subtitle {
-    color: var(--muted);
-    font-size: 16px;
-    max-width: 480px;
-    margin: 0 auto;
-    font-weight: 300;
-  }
-
-  /* Upload card */
-  .upload-card {
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: 20px;
-    padding: 36px;
-    margin-bottom: 24px;
-  }
-
-  .drop-zone {
-    border: 1.5px dashed var(--border2);
-    border-radius: var(--radius);
-    padding: 40px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-  }
-
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent);
-    background: rgba(200,245,102,0.04);
-  }
-
-  .drop-zone input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-
-  .drop-icon {
-    width: 44px; height: 44px;
-    background: var(--surface2);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 12px;
-    font-size: 20px;
-  }
-
-  .drop-title {
-    font-weight: 500;
-    margin-bottom: 4px;
-  }
-
-  .drop-sub {
-    font-size: 13px;
-    color: var(--muted);
-  }
-
-  .file-selected {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    background: rgba(200,245,102,0.08);
-    border: 1px solid rgba(200,245,102,0.2);
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-top: 12px;
-    font-size: 13px;
-    color: var(--accent);
-    font-family: var(--font-mono);
-  }
-
-  .goal-section {
-    margin-top: 24px;
-  }
-
-  .goal-section label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-
-  .goal-section textarea {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 15px;
-    padding: 14px 16px;
-    resize: vertical;
-    min-height: 90px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .goal-section textarea:focus {
-    border-color: rgba(200,245,102,0.4);
-  }
-
-  .goal-section textarea::placeholder {
-    color: var(--muted);
-  }
-
-  .presets {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 10px;
-  }
-
-  .preset-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    color: var(--muted);
+    background: rgba(199,239,106,0.08);
+    border-radius: 999px;
+    padding: 4px 9px;
     font-size: 12px;
-    padding: 4px 12px;
-    cursor: pointer;
-    transition: all 0.15s;
   }
-
-  .preset-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+  .section-label {
+    margin: 22px 0 10px;
+    color: var(--quiet);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
-
-  .run-btn {
-    width: 100%;
-    margin-top: 24px;
-    background: var(--accent);
-    border: none;
-    border-radius: var(--radius);
-    color: #0e0f11;
-    font-family: var(--font-sans);
-    font-size: 15px;
-    font-weight: 500;
-    padding: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .dataset-list {
+    display: grid;
     gap: 8px;
   }
-
-  .run-btn:hover:not(:disabled) {
-    background: var(--accent2);
-    transform: translateY(-1px);
+  .dataset-btn {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: left;
   }
-
+  .dataset-btn:hover, .dataset-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-dark);
+  }
+  .dataset-name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 650;
+  }
+  .dataset-size {
+    display: block;
+    margin-top: 2px;
+    color: var(--quiet);
+    font-size: 12px;
+  }
+  .empty {
+    border: 1px dashed var(--line-strong);
+    border-radius: 8px;
+    padding: 16px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .title-block h2 {
+    margin: 0;
+    font-size: 24px;
+    letter-spacing: 0;
+  }
+  .title-block p {
+    margin: 5px 0 0;
+    color: var(--muted);
+  }
+  .refresh-btn, .run-btn, .secondary-btn {
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    color: var(--text);
+    background: var(--panel-2);
+    padding: 10px 14px;
+  }
+  .refresh-btn:hover, .secondary-btn:hover {
+    border-color: var(--accent);
+  }
+  .run-btn {
+    border-color: transparent;
+    background: var(--accent);
+    color: #111312;
+    font-weight: 750;
+  }
   .run-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.42;
     cursor: not-allowed;
   }
-
-  /* Progress */
-  .progress-section {
-    display: none;
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: 20px;
-    padding: 32px;
-    margin-bottom: 24px;
+  .workspace {
+    display: grid;
+    gap: 22px;
+    margin-top: 22px;
   }
-
-  .progress-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-
-  .spinner {
-    width: 20px; height: 20px;
-    border: 2px solid var(--border2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .progress-title {
-    font-weight: 500;
-    font-size: 16px;
-  }
-
-  .steps-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .step-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--muted);
-    padding: 8px 12px;
+  .band {
+    border: 1px solid var(--line);
+    background: rgba(25, 29, 27, 0.9);
     border-radius: 8px;
-    background: var(--surface2);
-    font-family: var(--font-mono);
-    opacity: 0;
-    animation: fadeIn 0.3s forwards;
+    box-shadow: var(--shadow);
   }
-
-  @keyframes fadeIn { to { opacity: 1; } }
-
-  .step-dot {
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    margin-top: 5px;
-    flex-shrink: 0;
-  }
-
-  /* Results */
-  .results-section {
-    display: none;
-    margin-bottom: 40px;
-  }
-
-  .results-header {
+  .band-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
   }
-
-  .results-title {
-    font-family: var(--font-display);
-    font-weight: 300;
-    font-size: 28px;
-    letter-spacing: -0.02em;
+  .band-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 750;
   }
-
-  .tag {
-    background: rgba(200,245,102,0.1);
-    border: 1px solid rgba(200,245,102,0.2);
-    color: var(--accent);
-    font-size: 12px;
-    font-family: var(--font-mono);
-    padding: 4px 10px;
-    border-radius: 6px;
+  .band-body {
+    padding: 18px;
   }
-
-  .findings-grid {
+  .options {
     display: grid;
-    gap: 10px;
-    margin-bottom: 24px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
-
-  .finding-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
+  .option-btn {
+    min-height: 154px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 14px;
+    text-align: left;
     display: flex;
-    gap: 12px;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
   }
-
-  .finding-num {
-    font-family: var(--font-mono);
-    font-size: 11px;
+  .option-btn:hover, .option-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-dark);
+  }
+  .option-title {
+    font-weight: 750;
     color: var(--accent);
-    background: rgba(200,245,102,0.1);
-    border-radius: 5px;
-    padding: 2px 7px;
-    flex-shrink: 0;
-    margin-top: 2px;
   }
-
-  .finding-text {
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--text);
-  }
-
-  .charts-title {
-    font-size: 13px;
-    font-weight: 500;
+  .option-goal {
     color: var(--muted);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin-bottom: 14px;
+    font-size: 14px;
+    line-height: 1.45;
   }
-
-  .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  .chart-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-
-  .chart-card img {
+  textarea {
     width: 100%;
-    display: block;
-  }
-
-  .summary-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
-  }
-
-  .summary-card h3 {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin-bottom: 14px;
-  }
-
-  .summary-text {
-    font-size: 14px;
-    line-height: 1.75;
+    min-height: 104px;
+    resize: vertical;
     color: var(--text);
-    white-space: pre-wrap;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 13px;
+    outline: none;
   }
-
-  .reset-btn {
-    background: transparent;
-    border: 1px solid var(--border2);
-    border-radius: var(--radius);
-    color: var(--muted);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 20px;
+  textarea:focus {
+    border-color: var(--accent);
   }
-
-  .reset-btn:hover {
-    border-color: var(--text);
-    color: var(--text);
-  }
-
-  /* Error */
-  .error-box {
-    display: none;
-    background: rgba(255,107,107,0.08);
-    border: 1px solid rgba(255,107,107,0.2);
-    border-radius: var(--radius);
-    padding: 16px;
-    color: var(--danger);
-    font-size: 13px;
-    margin-bottom: 16px;
-  }
-
-  /* Footer */
-  footer {
-    text-align: center;
-    padding: 40px 0;
-    color: var(--muted);
-    font-size: 12px;
-    font-family: var(--font-mono);
-    border-top: 1px solid var(--border);
-  }
-
-  /* How it works */
-  .how-section {
-    margin: 32px 0;
-    padding: 28px 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .how-title {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-
-  .how-steps {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-  }
-
-  @media (max-width: 600px) {
-    .how-steps { grid-template-columns: repeat(2, 1fr); }
-  }
-
-  .how-step {
-    text-align: center;
-  }
-
-  .how-step-num {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
-
-  .how-step-label {
-    font-size: 13px;
-    color: var(--text);
-    font-weight: 500;
-    margin-bottom: 3px;
-  }
-
-  .how-step-sub {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .arrow-sep {
+  .action-row {
     display: flex;
     align-items: center;
-    justify-content: center;
-    color: var(--border2);
-    font-size: 18px;
-    padding-top: 16px;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .path-text {
+    color: var(--quiet);
+    font-size: 13px;
+  }
+  .status {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--line-strong);
+    border-top-color: var(--accent);
+    border-radius: 999px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error {
+    display: none;
+    border: 1px solid rgba(255,122,118,0.35);
+    color: var(--danger);
+    background: rgba(255,122,118,0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .results {
+    display: none;
+  }
+  .findings {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .finding {
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    border-radius: 8px;
+    padding: 14px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .finding small {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-weight: 750;
+  }
+  .charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+  }
+  .chart {
+    border: 1px solid var(--line);
+    background: #f7f7f4;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .chart img {
+    display: block;
+    width: 100%;
+  }
+  .summary {
+    white-space: pre-wrap;
+    color: var(--text);
+    line-height: 1.7;
+  }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--line); }
+    .options, .findings { grid-template-columns: 1fr; }
+    .topbar { align-items: flex-start; flex-direction: column; }
   }
 </style>
 </head>
 <body>
-
-<div class="container">
-  <header>
-    <div class="badge">
-      <span class="badge-dot"></span>
-      AGENT ACTIVE
-    </div>
-    <h1>Data<em>Sense</em></h1>
-    <p class="subtitle">Drop a CSV. Describe your goal. Watch an autonomous agent plan, execute, and report.</p>
-  </header>
-
-  <div class="how-section">
-    <p class="how-title">How the agent works</p>
-    <div style="display:grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; gap:4px; align-items:center;">
-      <div class="how-step">
-        <div class="how-step-num">01</div>
-        <div class="how-step-label">Perceive</div>
-        <div class="how-step-sub">Reads CSV structure & your goal</div>
-      </div>
-      <div class="arrow-sep">→</div>
-      <div class="how-step">
-        <div class="how-step-num">02</div>
-        <div class="how-step-label">Plan</div>
-        <div class="how-step-sub">Claude decides which analyses to run</div>
-      </div>
-      <div class="arrow-sep">→</div>
-      <div class="how-step">
-        <div class="how-step-num">03</div>
-        <div class="how-step-label">Execute</div>
-        <div class="how-step-sub">Runs Python, retries on errors</div>
-      </div>
-      <div class="arrow-sep">→</div>
-      <div class="how-step">
-        <div class="how-step-num">04</div>
-        <div class="how-step-label">Report</div>
-        <div class="how-step-sub">Generates charts + narrative summary</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="error-box" id="errorBox"></div>
-
-  <!-- Upload -->
-  <div class="upload-card" id="uploadCard">
-    <div class="drop-zone" id="dropZone">
-      <input type="file" id="csvInput" accept=".csv">
-      <div class="drop-icon">📊</div>
-      <div class="drop-title">Drop your CSV here</div>
-      <div class="drop-sub">or click to browse</div>
-    </div>
-    <div class="file-selected" id="fileSelected">
-      <span>✓</span>
-      <span id="fileName">file.csv</span>
+<div class="shell">
+  <aside>
+    <div class="brand">
+      <h1>DataSense</h1>
+      <span class="pill">Gemini</span>
     </div>
 
-    <div class="goal-section">
-      <label>Analysis Goal</label>
-      <textarea id="goalInput" placeholder="e.g. Understand sales trends, identify top-performing regions, and spot any seasonal patterns..."></textarea>
-      <div class="presets">
-        <button class="preset-btn" onclick="setGoal('Identify trends, top performers, and key insights')">Trends & insights</button>
-        <button class="preset-btn" onclick="setGoal('Find correlations between columns and visualize distributions')">Correlations</button>
-        <button class="preset-btn" onclick="setGoal('Detect outliers and anomalies in the data')">Outliers</button>
-        <button class="preset-btn" onclick="setGoal('Compare groups and summarize differences')">Group comparison</button>
+    <button class="refresh-btn" id="refreshBtn">Refresh Datasets</button>
+
+    <div class="section-label">Input Datasets</div>
+    <div class="dataset-list" id="datasetList"></div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div class="title-block">
+        <h2 id="activeDataset">Select a dataset</h2>
+        <p id="activeMeta">Place CSV files in the input folder, then choose one here.</p>
+      </div>
+      <div class="status" id="status">
+        <span class="spinner"></span>
+        <span id="statusText">Working</span>
       </div>
     </div>
 
-    <button class="run-btn" id="runBtn" onclick="runAnalysis()" disabled>
-      <span>▶</span> Run Agent
-    </button>
-  </div>
+    <div class="workspace">
+      <div class="error" id="errorBox"></div>
 
-  <!-- Progress -->
-  <div class="progress-section" id="progressSection">
-    <div class="progress-header">
-      <div class="spinner"></div>
-      <div>
-        <div class="progress-title">Agent is working...</div>
-        <div style="font-size:12px; color:var(--muted); margin-top:2px;" id="progressSub">Initializing analysis</div>
-      </div>
+      <section class="band">
+        <div class="band-header">
+          <h3 class="band-title">Suggested Analyses</h3>
+          <span class="path-text" id="inputPath">input/</span>
+        </div>
+        <div class="band-body">
+          <div class="options" id="options"></div>
+        </div>
+      </section>
+
+      <section class="band">
+        <div class="band-header">
+          <h3 class="band-title">Selected Analysis</h3>
+          <span class="path-text" id="outputPath">output/</span>
+        </div>
+        <div class="band-body">
+          <textarea id="goalInput" placeholder="Choose one of the suggested analyses or write your own goal."></textarea>
+          <div class="action-row">
+            <span class="path-text" id="selectedHint">No dataset selected.</span>
+            <button class="run-btn" id="runBtn" disabled>Run Analysis</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="results" id="results">
+        <section class="band">
+          <div class="band-header">
+            <h3 class="band-title">Key Findings</h3>
+            <span class="path-text" id="iterationText"></span>
+          </div>
+          <div class="band-body">
+            <div class="findings" id="findings"></div>
+          </div>
+        </section>
+
+        <section class="band" style="margin-top:22px;">
+          <div class="band-header">
+            <h3 class="band-title">Plots</h3>
+            <span class="path-text" id="plotPath"></span>
+          </div>
+          <div class="band-body">
+            <div class="charts" id="charts"></div>
+          </div>
+        </section>
+
+        <section class="band" style="margin-top:22px;">
+          <div class="band-header">
+            <h3 class="band-title">Report</h3>
+            <span class="path-text" id="reportPath"></span>
+          </div>
+          <div class="band-body">
+            <div class="summary" id="summary"></div>
+          </div>
+        </section>
+      </section>
     </div>
-    <div class="steps-list" id="stepsList"></div>
-  </div>
-
-  <!-- Results -->
-  <div class="results-section" id="resultsSection">
-    <div class="results-header">
-      <div class="results-title">Analysis Complete</div>
-      <div class="tag" id="iterTag">— iterations</div>
-    </div>
-
-    <div class="findings-grid" id="findingsGrid"></div>
-
-    <p class="charts-title">Generated Charts</p>
-    <div class="charts-grid" id="chartsGrid"></div>
-
-    <div class="summary-card">
-      <h3>Full Report</h3>
-      <div class="summary-text" id="summaryText"></div>
-    </div>
-
-    <button class="reset-btn" onclick="resetUI()">← Run another analysis</button>
-  </div>
-
-  <footer>
-    DataSense Agent · Built with Claude claude-sonnet-4 · Autonomous Analysis
-  </footer>
+  </main>
 </div>
 
 <script>
-  const csvInput = document.getElementById('csvInput');
-  const dropZone = document.getElementById('dropZone');
-  const fileSelected = document.getElementById('fileSelected');
-  const fileName = document.getElementById('fileName');
-  const goalInput = document.getElementById('goalInput');
-  const runBtn = document.getElementById('runBtn');
-  const errorBox = document.getElementById('errorBox');
+const datasetList = document.getElementById('datasetList');
+const optionsEl = document.getElementById('options');
+const goalInput = document.getElementById('goalInput');
+const runBtn = document.getElementById('runBtn');
+const errorBox = document.getElementById('errorBox');
+const statusEl = document.getElementById('status');
+const statusText = document.getElementById('statusText');
+const resultsEl = document.getElementById('results');
 
-  let selectedFile = null;
+let datasets = [];
+let selectedDataset = null;
+let selectedOptionIndex = null;
 
-  function checkReady() {
-    runBtn.disabled = !(selectedFile && goalInput.value.trim());
+document.getElementById('refreshBtn').addEventListener('click', loadDatasets);
+runBtn.addEventListener('click', runAnalysis);
+goalInput.addEventListener('input', updateRunState);
+
+function setStatus(text, visible = true) {
+  statusText.textContent = text;
+  statusEl.style.display = visible ? 'flex' : 'none';
+}
+
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.style.display = 'block';
+}
+
+function clearError() {
+  errorBox.style.display = 'none';
+  errorBox.textContent = '';
+}
+
+async function loadDatasets() {
+  clearError();
+  setStatus('Loading datasets');
+  try {
+    const res = await fetch('/api/datasets');
+    if (!res.ok) throw new Error('Could not load datasets.');
+    const data = await res.json();
+    datasets = data.datasets || [];
+    renderDatasets();
+    if (datasets.length && !selectedDataset) selectDataset(datasets[0].id);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    setStatus('', false);
   }
+}
 
-  csvInput.addEventListener('change', (e) => {
-    if (e.target.files[0]) {
-      selectedFile = e.target.files[0];
-      fileName.textContent = selectedFile.name;
-      fileSelected.style.display = 'flex';
-      checkReady();
-    }
+function renderDatasets() {
+  datasetList.innerHTML = '';
+  if (!datasets.length) {
+    datasetList.innerHTML = '<div class="empty">No CSV files found in input/. Add a dataset and refresh.</div>';
+    return;
+  }
+  datasets.forEach(dataset => {
+    const btn = document.createElement('button');
+    btn.className = `dataset-btn ${selectedDataset === dataset.id ? 'active' : ''}`;
+    btn.innerHTML = `
+      <span class="dataset-name">${escapeHtml(dataset.name)}</span>
+      <span class="dataset-size">${formatBytes(dataset.size_bytes)}</span>
+    `;
+    btn.addEventListener('click', () => selectDataset(dataset.id));
+    datasetList.appendChild(btn);
   });
+}
 
-  goalInput.addEventListener('input', checkReady);
+async function selectDataset(datasetId) {
+  selectedDataset = datasetId;
+  selectedOptionIndex = null;
+  goalInput.value = '';
+  resultsEl.style.display = 'none';
+  clearError();
+  renderDatasets();
 
-  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    const f = e.dataTransfer.files[0];
-    if (f && f.name.endsWith('.csv')) {
-      selectedFile = f;
-      fileName.textContent = f.name;
-      fileSelected.style.display = 'flex';
-      checkReady();
+  const dataset = datasets.find(item => item.id === datasetId);
+  document.getElementById('activeDataset').textContent = dataset ? dataset.name : datasetId;
+  document.getElementById('activeMeta').textContent = dataset ? `${formatBytes(dataset.size_bytes)} in input/` : 'Dataset selected.';
+  document.getElementById('selectedHint').textContent = 'Choose an analysis option.';
+  document.getElementById('outputPath').textContent = dataset ? `output/${dataset.stem}/` : 'output/';
+  document.getElementById('inputPath').textContent = `input/${datasetId}`;
+
+  setStatus('Building suggestions');
+  optionsEl.innerHTML = '';
+  try {
+    const res = await fetch(`/api/datasets/${encodeURIComponent(datasetId)}/suggestions`);
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Could not build suggestions.');
     }
+    const data = await res.json();
+    renderOptions(data.options || []);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    setStatus('', false);
+    updateRunState();
+  }
+}
+
+function renderOptions(options) {
+  optionsEl.innerHTML = '';
+  if (!options.length) {
+    optionsEl.innerHTML = '<div class="empty">No analysis suggestions could be generated for this dataset.</div>';
+    return;
+  }
+  options.forEach((option, index) => {
+    const btn = document.createElement('button');
+    btn.className = `option-btn ${selectedOptionIndex === index ? 'active' : ''}`;
+    btn.innerHTML = `
+      <span class="option-title">${escapeHtml(option.title)}</span>
+      <span class="option-goal">${escapeHtml(option.goal)}</span>
+    `;
+    btn.addEventListener('click', () => {
+      selectedOptionIndex = index;
+      goalInput.value = option.goal;
+      document.querySelectorAll('.option-btn').forEach(item => item.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('selectedHint').textContent = option.title;
+      updateRunState();
+    });
+    optionsEl.appendChild(btn);
   });
+}
 
-  function setGoal(text) {
-    goalInput.value = text;
-    checkReady();
-  }
+function updateRunState() {
+  runBtn.disabled = !(selectedDataset && goalInput.value.trim());
+}
 
-  const progressSteps = [
-    "Reading CSV structure and statistics...",
-    "Planning analysis strategy...",
-    "Executing statistical analyses...",
-    "Generating visualizations...",
-    "Checking results and retrying if needed...",
-    "Writing final report...",
-  ];
+async function runAnalysis() {
+  clearError();
+  resultsEl.style.display = 'none';
+  runBtn.disabled = true;
+  setStatus('Running analysis');
 
-  function addStep(text) {
-    const list = document.getElementById('stepsList');
-    const item = document.createElement('div');
-    item.className = 'step-item';
-    item.innerHTML = `<div class="step-dot"></div><span>${text}</span>`;
-    list.appendChild(item);
-    list.scrollTop = list.scrollHeight;
-  }
-
-  let stepInterval;
-
-  async function runAnalysis() {
-    errorBox.style.display = 'none';
-    
-    if (!selectedFile || !goalInput.value.trim()) return;
-
-    document.getElementById('uploadCard').style.display = 'none';
-    document.getElementById('progressSection').style.display = 'block';
-    document.getElementById('resultsSection').style.display = 'none';
-
-    let stepIdx = 0;
-    addStep(progressSteps[stepIdx++]);
-    stepInterval = setInterval(() => {
-      if (stepIdx < progressSteps.length) {
-        addStep(progressSteps[stepIdx++]);
-      }
-    }, 4000);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('goal', goalInput.value.trim());
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
-      });
-
-      clearInterval(stepInterval);
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Server error');
-      }
-
-      const data = await res.json();
-      showResults(data);
-
-    } catch (err) {
-      clearInterval(stepInterval);
-      document.getElementById('progressSection').style.display = 'none';
-      document.getElementById('uploadCard').style.display = 'block';
-      errorBox.textContent = `Error: ${err.message}`;
-      errorBox.style.display = 'block';
-    }
-  }
-
-  function showResults(data) {
-    document.getElementById('progressSection').style.display = 'none';
-    const resultsSection = document.getElementById('resultsSection');
-    resultsSection.style.display = 'block';
-
-    document.getElementById('iterTag').textContent = `${data.iterations} agent iterations`;
-
-    const findingsGrid = document.getElementById('findingsGrid');
-    findingsGrid.innerHTML = '';
-    (data.key_findings || []).forEach((f, i) => {
-      findingsGrid.innerHTML += `
-        <div class="finding-card">
-          <div class="finding-num">F${String(i+1).padStart(2,'0')}</div>
-          <div class="finding-text">${f}</div>
-        </div>`;
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dataset: selectedDataset,
+        goal: goalInput.value.trim(),
+      }),
     });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Analysis failed.');
+    renderResults(data);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    setStatus('', false);
+    updateRunState();
+  }
+}
 
-    const chartsGrid = document.getElementById('chartsGrid');
-    chartsGrid.innerHTML = '';
-    (data.charts || []).forEach(url => {
-      chartsGrid.innerHTML += `
-        <div class="chart-card">
-          <img src="${url}" alt="Analysis chart" loading="lazy">
-        </div>`;
-    });
+function renderResults(data) {
+  resultsEl.style.display = 'block';
+  document.getElementById('iterationText').textContent = `${data.iterations || 0} iterations`;
+  document.getElementById('plotPath').textContent = `${data.output_folder}/`;
+  document.getElementById('reportPath').textContent = `${data.output_folder}/report.md`;
 
-    if (!data.charts || data.charts.length === 0) {
-      chartsGrid.innerHTML = '<p style="color:var(--muted); font-size:13px;">No charts were generated.</p>';
-    }
-
-    document.getElementById('summaryText').textContent = data.summary || '';
+  const findings = document.getElementById('findings');
+  findings.innerHTML = '';
+  (data.key_findings || []).forEach((finding, index) => {
+    const div = document.createElement('div');
+    div.className = 'finding';
+    div.innerHTML = `<small>Finding ${index + 1}</small>${escapeHtml(finding)}`;
+    findings.appendChild(div);
+  });
+  if (!findings.children.length) {
+    findings.innerHTML = '<div class="empty">No key findings returned.</div>';
   }
 
-  function resetUI() {
-    document.getElementById('uploadCard').style.display = 'block';
-    document.getElementById('resultsSection').style.display = 'none';
-    document.getElementById('progressSection').style.display = 'none';
-    document.getElementById('stepsList').innerHTML = '';
-    selectedFile = null;
-    fileSelected.style.display = 'none';
-    csvInput.value = '';
-    goalInput.value = '';
-    runBtn.disabled = true;
+  const charts = document.getElementById('charts');
+  charts.innerHTML = '';
+  (data.charts || []).forEach(url => {
+    const div = document.createElement('div');
+    div.className = 'chart';
+    div.innerHTML = `<img src="${url}" alt="Analysis plot">`;
+    charts.appendChild(div);
+  });
+  if (!charts.children.length) {
+    charts.innerHTML = '<div class="empty">No plots were generated.</div>';
   }
+
+  document.getElementById('summary').textContent = data.summary || '';
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+loadDatasets();
 </script>
 </body>
 </html>
