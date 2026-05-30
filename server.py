@@ -12,7 +12,14 @@ from pydantic import BaseModel
 import uvicorn
 
 from agent import run_agent
-from analysis_options import list_csv_datasets, resolve_dataset_path, safe_dataset_id, suggest_analysis_options
+from analysis_options import (
+    ensure_analysis_cache,
+    get_cached_analysis_options,
+    list_csv_datasets,
+    resolve_dataset_path,
+    safe_dataset_id,
+    suggest_analysis_options,
+)
 from config import DEFAULT_OUTPUTS_DIR, INPUT_DIR
 from llm_client import GeminiQuotaError
 
@@ -46,8 +53,21 @@ def index():
 
 @app.get("/api/datasets")
 def datasets():
-    """Return CSV datasets available in the input folder."""
-    return {"datasets": list_csv_datasets(INPUT_PATH)}
+    """Return CSV datasets and ensure all cached analysis suggestions exist."""
+    try:
+        ensure_analysis_cache(INPUT_PATH, OUTPUTS_DIR)
+        datasets_payload = []
+        for dataset in list_csv_datasets(INPUT_PATH):
+            csv_path = resolve_dataset_path(INPUT_PATH, dataset["id"])
+            datasets_payload.append(
+                {
+                    **dataset,
+                    "options": get_cached_analysis_options(csv_path, OUTPUTS_DIR),
+                }
+            )
+        return {"datasets": datasets_payload}
+    except GeminiQuotaError as exc:
+        raise HTTPException(429, str(exc))
 
 
 @app.get("/api/datasets/{dataset_name}/suggestions")

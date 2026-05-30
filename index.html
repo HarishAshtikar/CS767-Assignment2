@@ -486,6 +486,14 @@ async function selectDataset(datasetId) {
   document.getElementById('outputPath').textContent = dataset ? `output/${dataset.stem}/` : 'output/';
   document.getElementById('inputPath').textContent = `input/${datasetId}`;
 
+  const cachedOptions = dataset && dataset.options ? dataset.options : [];
+  if (cachedOptions.length) {
+    renderOptions(cachedOptions);
+    setStatus('', false);
+    updateRunState();
+    return;
+  }
+
   setStatus('Building suggestions');
   optionsEl.innerHTML = '';
   try {
