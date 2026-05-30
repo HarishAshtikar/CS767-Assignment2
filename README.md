@@ -62,7 +62,7 @@ output/
 ### Run the Web App
 
 ```bash
-python main.py --serve
+python main.py
 ```
 
 Open `http://localhost:8000`.

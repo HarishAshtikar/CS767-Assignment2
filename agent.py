@@ -122,7 +122,6 @@ Save all charts to: {outputs_dir}/<name>.png
 
 
 if __name__ == "__main__":
-    run_agent(
-        csv_path="sample_data.csv",
-        user_goal="Understand the dataset, identify important patterns, and generate useful charts.",
+    raise SystemExit(
+        "Run `python main.py` to start the UI, or `python main.py --csv <path>` for direct CLI analysis."
     )
