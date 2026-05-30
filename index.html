@@ -301,11 +301,81 @@
   .chart img {
     display: block;
     width: 100%;
+    cursor: zoom-in;
   }
   .summary {
-    white-space: pre-wrap;
     color: var(--text);
     line-height: 1.7;
+  }
+  .summary h1,
+  .summary h2,
+  .summary h3 {
+    margin: 18px 0 8px;
+    line-height: 1.25;
+  }
+  .summary h1 { font-size: 24px; }
+  .summary h2 { font-size: 20px; color: var(--accent); }
+  .summary h3 { font-size: 17px; }
+  .summary p {
+    margin: 0 0 12px;
+  }
+  .summary ul,
+  .summary ol {
+    margin: 0 0 14px 22px;
+  }
+  .summary li {
+    margin: 5px 0;
+  }
+  .summary strong {
+    color: var(--text);
+  }
+  .summary code {
+    padding: 2px 5px;
+    border-radius: 5px;
+    color: var(--accent);
+    background: rgba(199,239,106,0.08);
+  }
+  .summary blockquote {
+    margin: 12px 0;
+    padding: 8px 12px;
+    border-left: 3px solid var(--accent);
+    color: var(--muted);
+    background: rgba(255,255,255,0.03);
+  }
+  .zoom-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    background: rgba(0,0,0,0.84);
+  }
+  .zoom-overlay.open {
+    display: flex;
+  }
+  .zoom-overlay img {
+    max-width: min(96vw, 1400px);
+    max-height: 92vh;
+    object-fit: contain;
+    background: #f7f7f4;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    cursor: zoom-out;
+  }
+  .zoom-close {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 999px;
+    color: var(--text);
+    background: rgba(25,29,27,0.9);
+    font-size: 24px;
+    line-height: 1;
   }
   @media (max-width: 900px) {
     .shell { grid-template-columns: 1fr; }
@@ -403,6 +473,11 @@
   </main>
 </div>
 
+<div class="zoom-overlay" id="zoomOverlay" aria-hidden="true">
+  <button class="zoom-close" id="zoomClose" aria-label="Close zoomed image">&times;</button>
+  <img id="zoomImage" alt="Zoomed analysis plot">
+</div>
+
 <script>
 const datasetList = document.getElementById('datasetList');
 const optionsEl = document.getElementById('options');
@@ -412,6 +487,8 @@ const errorBox = document.getElementById('errorBox');
 const statusEl = document.getElementById('status');
 const statusText = document.getElementById('statusText');
 const resultsEl = document.getElementById('results');
+const zoomOverlay = document.getElementById('zoomOverlay');
+const zoomImage = document.getElementById('zoomImage');
 
 let datasets = [];
 let selectedDataset = null;
@@ -590,14 +667,100 @@ function renderResults(data) {
   (data.charts || []).forEach(url => {
     const div = document.createElement('div');
     div.className = 'chart';
-    div.innerHTML = `<img src="${url}" alt="Analysis plot">`;
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = 'Analysis plot';
+    img.addEventListener('click', () => openZoom(url));
+    div.appendChild(img);
     charts.appendChild(div);
   });
   if (!charts.children.length) {
     charts.innerHTML = '<div class="empty">No plots were generated.</div>';
   }
 
-  document.getElementById('summary').textContent = data.summary || '';
+  document.getElementById('summary').innerHTML = renderMarkdown(data.summary || '');
+}
+
+function openZoom(url) {
+  zoomImage.src = url;
+  zoomOverlay.classList.add('open');
+  zoomOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function closeZoom() {
+  zoomOverlay.classList.remove('open');
+  zoomOverlay.setAttribute('aria-hidden', 'true');
+  zoomImage.src = '';
+}
+
+document.getElementById('zoomClose').addEventListener('click', closeZoom);
+zoomOverlay.addEventListener('click', event => {
+  if (event.target === zoomOverlay || event.target === zoomImage) closeZoom();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeZoom();
+});
+
+function renderMarkdown(markdown) {
+  const lines = String(markdown).replace(/\r\n/g, '\n').split('\n');
+  let html = '';
+  let listType = null;
+
+  function closeList() {
+    if (listType) {
+      html += `</${listType}>`;
+      listType = null;
+    }
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      closeList();
+      continue;
+    }
+
+    if (line.startsWith('### ')) {
+      closeList();
+      html += `<h3>${inlineMarkdown(line.slice(4))}</h3>`;
+    } else if (line.startsWith('## ')) {
+      closeList();
+      html += `<h2>${inlineMarkdown(line.slice(3))}</h2>`;
+    } else if (line.startsWith('# ')) {
+      closeList();
+      html += `<h1>${inlineMarkdown(line.slice(2))}</h1>`;
+    } else if (/^[-*]\s+/.test(line)) {
+      if (listType !== 'ul') {
+        closeList();
+        html += '<ul>';
+        listType = 'ul';
+      }
+      html += `<li>${inlineMarkdown(line.replace(/^[-*]\s+/, ''))}</li>`;
+    } else if (/^\d+\.\s+/.test(line)) {
+      if (listType !== 'ol') {
+        closeList();
+        html += '<ol>';
+        listType = 'ol';
+      }
+      html += `<li>${inlineMarkdown(line.replace(/^\d+\.\s+/, ''))}</li>`;
+    } else if (line.startsWith('> ')) {
+      closeList();
+      html += `<blockquote>${inlineMarkdown(line.slice(2))}</blockquote>`;
+    } else {
+      closeList();
+      html += `<p>${inlineMarkdown(line)}</p>`;
+    }
+  }
+
+  closeList();
+  return html;
+}
+
+function inlineMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
 }
 
 function formatBytes(bytes) {
