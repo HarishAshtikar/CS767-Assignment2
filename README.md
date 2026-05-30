@@ -1,5 +1,7 @@
 # DataSense CSV Analysis Agent
 
+[Demo video](https://drive.google.com/file/d/1zcMecNsBZ-YWXmzCLXvCNc-Bd_wFpPml/view?usp=drive_link)
+
 DataSense is a local FastAPI web app and CLI for analyzing CSV files. It uses Gemini to suggest and run analyses, then falls back to local pandas/matplotlib summaries when Gemini quota is unavailable.
 
 ## Reproduce
